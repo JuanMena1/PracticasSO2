@@ -13,9 +13,8 @@
  * Historial de revisión:
  * 
  * Fecha        Autor       Ref         Revisión
- * 26/03/2019   Juan Mena   1           Encuentra varias instancias   
- *                                      de una palabra en la misma línea
- * 
+ * 27/03/2019   Juan Mena   1           Transforma las palabras a minusculas
+ *                                      y elimina los signos de puntuacion
  * ********************************************************************/ 
 
 #include <iostream>
@@ -61,17 +60,16 @@ struct HiloBusqueda {
     int final_hilo;
 };
 
-
-
     std::mutex sem;
     std::vector<std::thread> v_hilos;
     std::vector<HiloBusqueda> v_objetosHilo;
     std::queue <std::string> resultado_busqueda;
+    int apariciones_palabra = 0;
 
 std::string eliminarSimbolos(std::string linea){ 
   
     for (int i = 0, len = linea.size(); i < len; i++) { 
-        // check whether parsing character is punctuation or not 
+        // ccomprueba si el caracter es un signo de puntuacion
         if (ispunct(linea[i]))/* || linea[i] == "¡" || linea[i] == "¿"*/ { 
             linea.erase(i--, 1); 
             len = linea.size(); 
@@ -114,9 +112,10 @@ void buscarPalabras(std::string nombre_documento, std::string palabra_busqueda, 
                             palabra_posterior=palabras_linea[i+1];
 
                         sem.lock();
-                        resultado_busqueda.push("[Hilo " +  std::to_string(h.id_hilo) + " inicio: " + std::to_string(h.comienzo_hilo) + 
-                        " - final: " + std::to_string(h.final_hilo) + "]:: " + "línea " + std::to_string(contador_lineas) + " ... "
+                        resultado_busqueda.push("[Hilo " +  std::to_string(h.id_hilo) + " inicio:" + std::to_string(h.comienzo_hilo) + 
+                        " - final:" + std::to_string(h.final_hilo) + "] :: " + "línea " + std::to_string(contador_lineas) + " :: ... "
                         + palabra_anterior + " " + palabras_linea[i] + " " + palabra_posterior + " ...");
+                        apariciones_palabra++;
                         sem.unlock();
                     }
                 }
@@ -137,7 +136,6 @@ int contarLineasDocumento(std::string nombre_documento){
         getline(file,linea); 
         lineas++;
     }
-    std::cout << "Lineas del archivo: " << lineas <<std::endl;
     file.close();
     return lineas;
 }
@@ -145,7 +143,7 @@ int contarLineasDocumento(std::string nombre_documento){
 int main(int argc, char *argv[]){
 
     if(argc != 4) {
-        std::cout << "ERROR, se debe ejecutar con las opciones <nombre_documento> <palabra> <num_hilos>" << std::endl;
+        std::cout << "\033[31m" << "ERROR, se debe ejecutar con las opciones <nombre_documento> <palabra> <num_hilos>" << "\033[0m" <<std::endl;
         exit(1);
     }
 
@@ -155,6 +153,8 @@ int main(int argc, char *argv[]){
     int     lineas_documento         = 0;
     int     tamano_bloque            = 0;
     int     i;
+
+    std::cout << "INICIO DEL PROGRAMA" << std::endl;
 
     lineas_documento = contarLineasDocumento(nombre_documento);
     tamano_bloque=lineas_documento/num_hilos;
@@ -174,9 +174,10 @@ int main(int argc, char *argv[]){
     for_each(v_hilos.begin(), v_hilos.end(), std::mem_fn(&std::thread::join));
 
     while(!resultado_busqueda.empty()){
-        std::cout << resultado_busqueda.front() << std::endl;
+        std::cout << "\033[1m\033[37m" << resultado_busqueda.front() <<"\033[0m" << std::endl;
         resultado_busqueda.pop();
     }
-
+    std::cout << "\033[35m"<< "La palabra " << palabra_busqueda << " se ha encontrado " << apariciones_palabra << " veces" << "\033[0m"<<std::endl;
+    std::cout << "FIN DEL PROGRAMA" << std::endl;
     return 0;
 }
