@@ -1,11 +1,11 @@
 Esto es una prueba
-Tiene hola 2 lineas hola
+Tiene hola, 2 lineas Hola!
 medr
-ko hola
+ko hola¿
 sis
-buenos dias
+buenos dias ¡hola
 mañana
-buenos
+hola buenos
 retra
 buen 
 so
