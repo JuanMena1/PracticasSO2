@@ -89,7 +89,7 @@ void buscarPalabras(std::string nombre_documento, std::string palabra_busqueda, 
                         else
                             palabra_posterior=palabras_linea[i+1];
 
-                       h.resultado_busqueda.push("línea " + std::to_string(contador_lineas) + " :: ... "
+                        h.resultado_busqueda.push("línea " + std::to_string(contador_lineas) + " :: ... "
                         + palabra_anterior + " " + palabras_linea[i] + " " + palabra_posterior + " ...");
 
                         sem.lock();
