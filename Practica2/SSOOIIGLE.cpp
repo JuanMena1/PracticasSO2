@@ -30,42 +30,20 @@
 #include <iterator>
 #include <sstream>
 
-/*class HiloBusqueda{
-    private:
-        int id_hilo;
-        int comienzo_hilo;
-        int final_hilo;
-        std::queue <std::string> informacion_busqueda;
-    public:
-    HiloBusqueda(int id,int comienzo,int fin);
-    int getid();
-    int getFinalHilo();
-    int getComienzoHilo();
-    void buscarPalabras(std::string, std::string);
-};
-HiloBusqueda::HiloBusqueda(int id, int comienzo, int fin){
-    id_hilo=id;
-    comienzo_hilo=comienzo;
-    final_hilo=fin;
-}
-
-int HiloBusqueda::getid(){return id_hilo;}
-int HiloBusqueda::getComienzoHilo(){return comienzo_hilo;}
-int HiloBusqueda::getFinalHilo() {return final_hilo;}*/
-
-
 struct HiloBusqueda {
     int id_hilo;
     int comienzo_hilo;
     int final_hilo;
+    std::queue <std::string> resultado_busqueda;
 };
 
     std::mutex sem;
     std::vector<std::thread> v_hilos;
     std::vector<HiloBusqueda> v_objetosHilo;
-    std::queue <std::string> resultado_busqueda;
+    //std::queue <std::string> resultado_busqueda;
     int apariciones_palabra = 0;
 
+//Este método elimina los imbolos de puntuación que pueda tener una línea
 std::string eliminarSimbolos(std::string linea){ 
   
     for (int i = 0, len = linea.size(); i < len; i++) { 
@@ -78,8 +56,8 @@ std::string eliminarSimbolos(std::string linea){
     return linea;
 }
 
-
-void buscarPalabras(std::string nombre_documento, std::string palabra_busqueda, HiloBusqueda h){    
+//Busca la palabra en las lineas correspondientes a cada hilo
+void buscarPalabras(std::string nombre_documento, std::string palabra_busqueda, HiloBusqueda& h){ 
     std::ifstream file(nombre_documento);
     std::string linea;
     int contador_lineas = 1;
@@ -111,10 +89,10 @@ void buscarPalabras(std::string nombre_documento, std::string palabra_busqueda, 
                         else
                             palabra_posterior=palabras_linea[i+1];
 
-                        sem.lock();
-                        resultado_busqueda.push("[Hilo " +  std::to_string(h.id_hilo) + " inicio:" + std::to_string(h.comienzo_hilo) + 
-                        " - final:" + std::to_string(h.final_hilo) + "] :: " + "línea " + std::to_string(contador_lineas) + " :: ... "
+                       h.resultado_busqueda.push("línea " + std::to_string(contador_lineas) + " :: ... "
                         + palabra_anterior + " " + palabras_linea[i] + " " + palabra_posterior + " ...");
+
+                        sem.lock();
                         apariciones_palabra++;
                         sem.unlock();
                     }
@@ -125,7 +103,7 @@ void buscarPalabras(std::string nombre_documento, std::string palabra_busqueda, 
     }
 }
 
-
+//Cuenta las líneas que tiene el documento
 int contarLineasDocumento(std::string nombre_documento){
     int lineas = 0;
     std::ifstream file(nombre_documento);
@@ -138,6 +116,21 @@ int contarLineasDocumento(std::string nombre_documento){
     }
     file.close();
     return lineas;
+}
+
+//Imprime los resultados de la busqueda realizada por los hilos
+void imprimir_resultados(std::string palabra_busqueda){
+    for (HiloBusqueda h : v_objetosHilo) {
+        while(!h.resultado_busqueda.empty()){
+            std::cout << "\033[1m\033[37m" << "[Hilo " +  std::to_string(h.id_hilo) + " inicio:" + std::to_string(h.comienzo_hilo) 
+            + " - final:" + std::to_string(h.final_hilo) + "] :: " << "\033[0m";
+            std::cout << "\033[1m\033[37m" << h.resultado_busqueda.front() <<"\033[0m" << std::endl;
+            h.resultado_busqueda.pop();
+        }
+    }
+
+    std::cout << "\033[35m"<< "La palabra " << palabra_busqueda << " se ha encontrado " << apariciones_palabra << " veces" << "\033[0m"<<std::endl;
+    std::cout << "FIN DEL PROGRAMA" << std::endl;
 }
 
 int main(int argc, char *argv[]){
@@ -161,23 +154,16 @@ int main(int argc, char *argv[]){
 
     for(i=1; i<num_hilos;i++){
         v_objetosHilo.push_back(HiloBusqueda {i, tamano_bloque*(i-1)+1, tamano_bloque*i});
-        //HiloBusqueda h = {i, tamano_bloque*(i-1)+1, tamano_bloque*i};
-        v_hilos.push_back(std::thread(buscarPalabras,nombre_documento, palabra_busqueda, v_objetosHilo[i-1]));
+        v_hilos.push_back(std::thread(buscarPalabras,nombre_documento, palabra_busqueda, std::ref(v_objetosHilo[i-1])));
         std::this_thread::sleep_for (std::chrono::milliseconds(100));
     }
     if(i==num_hilos){
         v_objetosHilo.push_back(HiloBusqueda {i, tamano_bloque*(i-1)+1, lineas_documento});
-        v_hilos.push_back(std::thread(buscarPalabras, nombre_documento, palabra_busqueda, v_objetosHilo[i-1]));
-        //v_hilos.push_back(std::thread(buscarPalabras, nombre_documento, palabra_busqueda,tamano_bloque*(i-1)+1, lineas_documento));
+        v_hilos.push_back(std::thread(buscarPalabras, nombre_documento, palabra_busqueda, std::ref(v_objetosHilo[i-1])));
     }
 
     for_each(v_hilos.begin(), v_hilos.end(), std::mem_fn(&std::thread::join));
+    imprimir_resultados(palabra_busqueda);
 
-    while(!resultado_busqueda.empty()){
-        std::cout << "\033[1m\033[37m" << resultado_busqueda.front() <<"\033[0m" << std::endl;
-        resultado_busqueda.pop();
-    }
-    std::cout << "\033[35m"<< "La palabra " << palabra_busqueda << " se ha encontrado " << apariciones_palabra << " veces" << "\033[0m"<<std::endl;
-    std::cout << "FIN DEL PROGRAMA" << std::endl;
     return 0;
 }
