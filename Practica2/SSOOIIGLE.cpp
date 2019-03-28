@@ -1,5 +1,5 @@
 /**********************************************************************
- * Projecto:                Práctica 1 de SO II
+ * Projecto:                Práctica 2 de SO II
  * 
  * Nombre del programa:     SSOOIIGLE.c
  * 
@@ -13,8 +13,8 @@
  * Historial de revisión:
  * 
  * Fecha        Autor       Ref         Revisión
- * 27/03/2019   Juan Mena   1           Transforma las palabras a minusculas
- *                                      y elimina los signos de puntuacion
+ * 28/03/2019   Juan Mena   1           Paso de las estructuras por referencia
+ *                                      y colas locales en estas
  * ********************************************************************/ 
 
 #include <iostream>
