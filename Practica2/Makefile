@@ -5,7 +5,7 @@ compile:
 	$(CC) SSOOIIGLE.cpp -o SSOOIIGLE $(FLAGS)
 
 run:
-	./SSOOIIGLE Libros/17\ LEYES\ DEL\ TRABAJO\ EN\ EQUIPO.txt equipo 4 
+	./SSOOIIGLE Libros/17\ LEYES\ DEL\ TRABAJO\ EN\ EQUIPO.txt trabajo 4 
 
 test:
 	./SSOOIIGLE prueba.txt hola 3 	

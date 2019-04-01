@@ -27,7 +27,7 @@ Compilar el programa:
 Ejecutar el programa:
 	-Para ejecutar usando el Makefile antes debemos abrir dicho Makefile para indicarle 
 	el fichero donde queremos buscar, la palabra que queremos buscar y el número de hilos que queremos usar.
-	Una vez hecho esto debemos usar el comando:
+	Una vez hecho esto, debemos usar el comando:
 		"make run"
 
 	Por defecto si queremos realizar una prueba de la ejecución del programa en un fichero de prueba, el comando que debemos utilizar es:
