@@ -54,7 +54,7 @@ struct HiloBusqueda {
     std::vector<HiloBusqueda>   v_objetosHilo;           //Vector para guardar las instancias de la estructura HiloBusqueda
     int                         apariciones_palabra = 0; //Veces que se ha encontrado la palabra
 
-//Este método elimina los simbolos de puntuación que pueda tener una línea
+//Elimina los simbolos de puntuación que pueda tener una línea
 std::string eliminarSimbolos(std::string linea){ 
   
     for (int i = 0, len = linea.size(); i < len; i++) { 
@@ -67,7 +67,7 @@ std::string eliminarSimbolos(std::string linea){
     return linea;
 }
 
-//Busca la palabra en las lineas correspondientes a cada hilo
+//Busca la palabra en las líneas correspondientes a cada hilo
 void buscarPalabras(std::string nombre_documento, std::string palabra_busqueda, HiloBusqueda& h){ 
     std::ifstream            file(nombre_documento);
     std::string              linea;                     //Línea del documento con la que se está trabajando
@@ -81,7 +81,7 @@ void buscarPalabras(std::string nombre_documento, std::string palabra_busqueda, 
         if(contador_lineas >= h.comienzo_hilo){
             linea = eliminarSimbolos(linea);
 
-            //Transforma la linea a minúsculas
+            //Transforma la línea a minúsculas
             std::transform(linea.begin(), linea.end(), linea.begin(), ::tolower);
 
                 std::istringstream iss(linea);
@@ -89,13 +89,13 @@ void buscarPalabras(std::string nombre_documento, std::string palabra_busqueda, 
 
                 for(int i=0; i<palabras_linea.size();i++){
                     if(palabras_linea[i] == palabra_busqueda){
-                        //Compruebo si la palabra está la primera en la línea
+                        //Comprueba si la palabra es la primera en la línea
                         if(i-1 <0)
                             palabra_anterior = "*";
                         else
                             palabra_anterior = palabras_linea[i-1];
 
-                        //Compruebo si la palabra está la última en la línea
+                        //Comprueba si la palabra es la última en la línea
                         if(i == palabras_linea.size()-1)
                             palabra_posterior = "*";
                         else
@@ -140,16 +140,16 @@ void imprimir_resultados(std::string palabra_busqueda){
         }
     }
 
-    std::cout << "\033[35m"<< "La palabra " << palabra_busqueda << " se ha encontrado " << apariciones_palabra << " veces" << "\033[0m"<<std::endl;
+    std::cout << "\033[35m"<< "La palabra '" << palabra_busqueda << "' se ha encontrado " << apariciones_palabra << " veces" << "\033[0m"<<std::endl;
     std::cout << "FIN DEL PROGRAMA" << std::endl;
 }
 
 int main(int argc, char *argv[]){
 
-    //Compruebo si se han introducido los 4 parámetros necesarios
+    //Comprueba si se han introducido los 4 parámetros necesarios
     if(argc != 4) {
         std::cout << "\033[31m" << "ERROR, se debe ejecutar con las opciones <nombre_documento> <palabra> <num_hilos>" << "\033[0m" <<std::endl;
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     std::string nombre_documento        = argv[1];
@@ -162,13 +162,15 @@ int main(int argc, char *argv[]){
     std::cout << "INICIO DEL PROGRAMA" << std::endl;
 
     num_lineas_documento =  contarLineasDocumento(nombre_documento);
-    tamano_bloque =     num_lineas_documento/num_hilos;
+    tamano_bloque        =  num_lineas_documento/num_hilos;
 
-    for(i=1; i<num_hilos;i++){
+
+    for(i=1; i<num_hilos;i++){ //Se crean todos los hilos excepto el último
         v_objetosHilo.push_back(HiloBusqueda {i, tamano_bloque*(i-1)+1, tamano_bloque*i});
         v_hilos.push_back(std::thread(buscarPalabras,nombre_documento, palabra_busqueda, std::ref(v_objetosHilo[i-1])));
         std::this_thread::sleep_for (std::chrono::milliseconds(100));
     }
+    //Se crea el último
     if(i==num_hilos){
         v_objetosHilo.push_back(HiloBusqueda {i, tamano_bloque*(i-1)+1, num_lineas_documento});
         v_hilos.push_back(std::thread(buscarPalabras, nombre_documento, palabra_busqueda, std::ref(v_objetosHilo[i-1])));
