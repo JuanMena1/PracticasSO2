@@ -5,7 +5,7 @@
 
 std::queue <int> cola;
 
-void HiloA(std::future<int, int>& futA){
+void HiloA(std::future<int>& futA){
 	int x = 0;
 	
 	x = futA.get();
@@ -14,8 +14,8 @@ void HiloA(std::future<int, int>& futA){
 
 int main(int argc, char const *argv[])
 {
-	std::promise <int, int > promA;
-	std::future <int, int futA = promA.get_future();
+	std::promise <int> promA;
+	std::future <int> futA = promA.get_future();
 
 	std::thread A(HiloA, std::ref(futA));
 	promA.set_value(7);
