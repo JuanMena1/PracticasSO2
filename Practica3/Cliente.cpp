@@ -8,8 +8,8 @@ class Cliente {
 	public:
 		Cliente(int id, int num_tickets, int num_palomitas, int num_bebidas);
 		void comportamientoCliente();
-		void comprarTickets();
-		void comprarPalomitas();
+		void comprarTickets(int id);
+		void comprarPalomitas(int id);
 		int getId();
 };
 
