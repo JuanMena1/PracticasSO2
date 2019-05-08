@@ -34,7 +34,6 @@
 
 #include <iostream>
 #include <thread>
-#include <string>
 #include <queue>
 #include <chrono>
 #include <mutex>
@@ -48,8 +47,6 @@
 #include "Colores.h"
 #include <signal.h>
 #include <unistd.h>
-
-#define NUM_HILOS 10
 
 
 struct InfoPuntoVenta {
@@ -66,6 +63,7 @@ struct SolicitudPago {
 
 //Clase cliente con comprar tickets, comprar palomitas
 
+int num_hilos = 10;
 int asientos_sala = 72;
 bool asientos_suficientes {true};
 std::mutex sem_tickets;
@@ -87,8 +85,8 @@ std::queue <PeticionTicket> cola_peticiones_taquilla;
 std::queue <PeticionComidaBebida> cola_peticiones_palomitas;
 std::queue <InfoPuntoVenta*> cola_peticiones_reponer;
 std::queue <SolicitudPago> cola_pagos;
-int turno_tickets = -1;
-int turno_palomitas = -1;
+int turno_tickets = 0;
+int turno_palomitas = 0;
 
 void reponer(){
 	while(1){
@@ -129,7 +127,7 @@ void PuntoVenta(InfoPuntoVenta& pv){
 
 		PeticionComidaBebida pcb = cola_peticiones_palomitas.front();
 		cola_peticiones_palomitas.pop();
-		std::cout <<YELLOW << "[PUNTO_VENTA " << pv.id << "]\t Hilo " << pcb.getId() << " entra a Punto de Venta " << pv.id <<RESET<< std::endl;
+		//std::cout <<YELLOW << "[PUNTO_VENTA " << pv.id << "]\t Hilo " << pcb.getId() << " entra a Punto de Venta " << pv.id <<RESET<< std::endl;
 		std::this_thread::sleep_for (std::chrono::milliseconds(1000));		
 		if(pv.cantidad_bebidas - pcb.getNumBebidas() <0 || pv.cantidad_palomitas - pcb.getNumPalomitas()<0){
 			cola_peticiones_reponer.push(&pv);
@@ -163,7 +161,7 @@ void servicioTaquilla(){
 			std::cout << YELLOW << "[TAQUILLA]\t Hilo " <<p.getId()<< " ha comprado " << p.getNumTickets()<<" tickets"<< RESET <<std::endl;
 			
 		} else {
-			std::cout << RED <<"[TAQUILLA]\t El número de tickets es mayor que los asientos libres"<< RESET <<std::endl;
+			std::cout  << BOLDRED<< "[C_TICKETS]\t Hilo " << p.getId() << " quiere más asientos de los que hay libres" << RESET<<std::endl;
 			asientos_suficientes=false;
 		}
 		sem_tickets.unlock();
@@ -183,10 +181,7 @@ void Cliente::comprarTickets(int const id){
 	std::unique_lock<std::mutex> lk_tickets(sem_tickets);
 
 	cv_tickets.wait(lk_tickets, [id]{return(turno_tickets==id);});
-	std::cout <<"[C_TICKETS]\t ** Turno para tickets " << this->id << " **"<<std::endl;
-	//std::unique_lock<std::mutex> lk_pagar(sem_pagar, std::defer_lock);
-	
-	//std::lock(lk_taquilla, lk_pagar);
+	std::cout <<BOLDWHITE <<"[C_TICKETS]\t ** Turno para tickets " << this->id << " **"<< RESET<<std::endl;
 
 	std::this_thread::sleep_for (std::chrono::milliseconds(1000));
 	std::cout << CYAN << "[C_TICKETS]\t Hilo " << this->id << " entra a taquilla para comprar " << this->num_tickets << " tickets" << RESET<<std::endl;
@@ -203,15 +198,15 @@ void Cliente::comprarTickets(int const id){
 }
 
 void Cliente::comprarPalomitas(int const id){
-	std::cout << "[C_PALOMITAS]\t Hilo " << this->id << " llega a la cola de las palomitas" << std::endl;
+	std::cout  << GREEN << "[C_PALOMITAS]\t Hilo " << this->id << " llega a la cola de las palomitas" << RESET<<std::endl;
 	std::unique_lock<std::mutex> lk_palomitas(sem_palomitas);
 	cv_palomitas.wait(lk_palomitas, [id]{return(turno_palomitas==id);});
-	std::cout <<"[C_PALOMITAS]\t -- Turno para palomitas " << this->id << " --"<<std::endl;
+	std::cout <<BOLDWHITE <<"[C_PALOMITAS]\t -- Turno para palomitas " << this->id << " --"<< RESET<<std::endl;
 	//std::unique_lock<std::mutex> lk_pagar(sem_pagar, std::defer_lock);
 	
 	//std::lock(lk_palomitas, lk_pagar);
 	std::this_thread::sleep_for (std::chrono::milliseconds(1000));
-	std::cout << "[C_PALOMITAS]\t Hilo " << this->id << " entra a taquilla para comprar " << this->num_palomitas << " palomitas y " <<this->num_bebidas << " bebidas" << std::endl;
+	std::cout << "[C_PALOMITAS]\t Hilo " << this->id << " va a comprar " << this->num_palomitas << " palomitas y " <<this->num_bebidas << " bebidas" << std::endl;
 
 	cola_peticiones_palomitas.push(PeticionComidaBebida(this->id, this->num_palomitas, this->num_bebidas));
 	cola_pagos.push(SolicitudPago{this->id,2});
@@ -245,55 +240,52 @@ int main(int argc, char *argv[]) {
 	std::thread Taquilla(servicioTaquilla);
 	std::this_thread::sleep_for (std::chrono::milliseconds(100));
 	std::thread Pagar(pagarTarjeta);
+
 	InfoPuntoVenta pv1={1,10,10,10};
 	std::thread PuntoVenta1(PuntoVenta, std::ref(pv1));
 	std::this_thread::sleep_for (std::chrono::milliseconds(100));
+
 	InfoPuntoVenta pv2={2,8,8,8};
 	std::thread PuntoVenta2(PuntoVenta, std::ref(pv2));
 	std::this_thread::sleep_for (std::chrono::milliseconds(100));
+
 	InfoPuntoVenta pv3={3,7,7,7};
 	std::thread PuntoVenta3(PuntoVenta, std::ref(pv3));
 	std::thread Reponedor(reponer);
 
-	for(i=0;i<NUM_HILOS;i++)
+	for(i=0;i<num_hilos;i++)
 		vector_clientes.push_back(Cliente(i+1, (rand() % 5)+1, (rand() % 5)+1, (rand() % 5)+1));
 
-	for(i=0;i<NUM_HILOS;i++){
+	for(i=0;i<num_hilos;i++){
 		cola_hilos_tickets.push(std::thread(&Cliente::comportamientoCliente, &vector_clientes[i]));
 	 	std::this_thread::sleep_for (std::chrono::milliseconds(100));
 	}
 
-	for(i=0;i<NUM_HILOS;i++){
-		turno_tickets = i+1;
-		cv_tickets.notify_all();
-		s_manager_tickets.lock();
+	while(asientos_sala > 0){
+		if(!cola_hilos_tickets.empty()){
+			turno_tickets += 1;
+			cv_tickets.notify_all();
+			s_manager_tickets.lock();
+		}
+		if(!cola_hilos_palomitas.empty()){
+			turno_palomitas += 1;
+			cv_palomitas.notify_all();
+			s_manager_palomitas.lock();
+		}
+		vector_clientes.push_back(Cliente(num_hilos+1, (rand() % 5)+1, (rand() % 5)+1, (rand() % 5)+1));
+		cola_hilos_tickets.push(std::thread(&Cliente::comportamientoCliente, &vector_clientes[num_hilos]));
+	 	std::this_thread::sleep_for (std::chrono::milliseconds(100));
+		num_hilos += 1;
 	}
 
-	for(i=0;i<NUM_HILOS;i++){
-		turno_palomitas = i+1;
-		cv_palomitas.notify_all();
-		s_manager_palomitas.lock();
-	}
-
-	/*for(i=0;i<NUM_HILOS;i++){
-		//nuevo_cliente.join();
-		cola_hilos_tickets.front().join();
-		cola_hilos_tickets.pop();
-	}*/
-
-	Taquilla.detach();
+	//Taquilla.detach();
 	//Pagar.detach();
-	PuntoVenta1.detach();
+	//PuntoVenta1.detach();
 	//PuntoVenta2.detach();
 	//PuntoVenta3.detach();
-	Reponedor.detach();
+	//Reponedor.detach();
 
 	//std::this_thread::sleep_for (std::chrono::milliseconds(5000));
-
-	/*for(i=0;i<NUM_HILOS;i++){
-		cola_hilos_palomitas.front().join();
-		cola_hilos_palomitas.pop();
-	}*/
 	Pagar.join();
 	return 0;
 }
