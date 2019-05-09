@@ -62,8 +62,8 @@ struct SolicitudPago {
 };
 
 /*Variables Globales*/
-int 								num_hilos 			= 		5;		/*Número de clientes que van a entrar al cine al principio*/
-int 								asientos_libres 	= 		35;		/*Número de asientos libres de la sala*/
+int 								num_hilos 			= 		10;		/*Número de clientes que van a entrar al cine al principio*/
+int 								asientos_libres 	= 		72;		/*Número de asientos libres de la sala*/
 int 								turno_tickets 		= 		0;		/*Turno para la cola de los tickets*/
 int 								turno_palomitas 	= 		0;		/*Turno para la cola de las palomitas y bebidas*/
 bool 								asientos_suficientes 		{true};	/*Variable para saber si quedan asientos suficientes para asignar*/
@@ -96,7 +96,7 @@ std::queue 	<SolicitudPago> 		cola_pagos;							/*Cola para realizar los pagos*/
 void reponer(){
 	while(1){
 		sem_reponedor.lock();
-
+		/*Se saca la primera petición*/
 		InfoPuntoVenta *info_reponer = cola_peticiones_reponer.front();
 		cola_peticiones_reponer.pop();
 
@@ -111,10 +111,11 @@ void reponer(){
 		sem_puntoventa.unlock();
 	}
 }
-/*Se encarga de realizar los pagos tanto de tickets como de comida y bebida*/
+/*Se encarga de realizar los pagos tanto de tickets (1) como de comida y bebida (2)*/
 void pagarTarjeta(){
 	while(1){
 		sem_pagar.lock();
+		/*Se saca la primera petición*/
 		SolicitudPago sp = cola_pagos.front();
 		cola_pagos.pop();
 
@@ -128,11 +129,11 @@ void pagarTarjeta(){
 }
 /*Se encarga de suministrar las palomitas y las bebidas a los clientes*/
 void PuntoVenta(InfoPuntoVenta& pv){
-	std::cout << BOLDBLUE<<"[PUNTO_VENTA " << pv.id << "]\t Abre Punto de venta "<< pv.id<<" con " << pv.cantidad_palomitas << " palomitas y " << pv.cantidad_bebidas << " bebidas" <<RESET<< std::endl;
+	std::cout << BOLDBLUE<<"[PUNTO_VENTA_" << pv.id << "]\t Abre Punto de venta "<< pv.id<<" con " << pv.cantidad_palomitas << " palomitas y " << pv.cantidad_bebidas << " bebidas" <<RESET<< std::endl;
 	while(1){
 		std::unique_lock<std::mutex> lk_puntoventa(sem_puntoventa);
 		cv_puntos_venta.wait(lk_puntoventa, []{return !cola_peticiones_palomitas.empty();});
-
+		/*Se saca la primera petición*/
 		PeticionComidaBebida pcb = cola_peticiones_palomitas.front();
 		cola_peticiones_palomitas.pop();
 		std::this_thread::sleep_for (std::chrono::milliseconds(1000));	
@@ -142,15 +143,15 @@ void PuntoVenta(InfoPuntoVenta& pv){
 
 			sem_reponedor.unlock();
 			sem_puntoventa.lock();
-			std::cout << CYAN << "[PUNTO_VENTA " << pv.id << "]\t Reposición realizada"<< RESET <<std::endl;
+			std::cout << CYAN << "[PUNTO_VENTA_" << pv.id << "]\t Reposición realizada"<< RESET <<std::endl;
 			pv.cantidad_bebidas -= pcb.getNumBebidas();
 			pv.cantidad_palomitas -= pcb.getNumPalomitas();
-			std::cout << BLUE << "[PUNTO_VENTA " << pv.id << "]\t Punto de venta " << pv.id << " Quedan " << pv.cantidad_palomitas << " palomitas y " << pv.cantidad_bebidas << " bebidas" << RESET <<std::endl;
+			std::cout << BLUE << "[PUNTO_VENTA_" << pv.id << "]\t Punto de venta " << pv.id << " Quedan " << pv.cantidad_palomitas << " palomitas y " << pv.cantidad_bebidas << " bebidas" << RESET <<std::endl;
 
 		}else{
 			pv.cantidad_bebidas -= pcb.getNumBebidas();
 			pv.cantidad_palomitas -= pcb.getNumPalomitas();
-			std::cout << BLUE << "[PUNTO_VENTA " << pv.id << "]\t Punto de venta " << pv.id << " Quedan " << pv.cantidad_palomitas << " palomitas y " << pv.cantidad_bebidas << " bebidas" << RESET <<std::endl;
+			std::cout << BLUE << "[PUNTO_VENTA_" << pv.id << "]\t Punto de venta " << pv.id << " Quedan " << pv.cantidad_palomitas << " palomitas y " << pv.cantidad_bebidas << " bebidas" << RESET <<std::endl;
 		}
 		lk_puntoventa.unlock();
 		sem_palomitas.unlock();
@@ -161,7 +162,7 @@ void servicioTaquilla(){
 	std::cout << YELLOW <<"\n[TAQUILLA]\t Abre la taquilla"<<RESET<< std::endl;
 	while(1){
 		sem_taquilla.lock();
-
+		/*Se saca la primera petición*/
 		PeticionTicket p = cola_peticiones_taquilla.front();
 		cola_peticiones_taquilla.pop();
 		std::this_thread::sleep_for (std::chrono::milliseconds(250));		
@@ -186,6 +187,7 @@ void Cliente::comportamientoCliente(){
 	Cliente::comprarTickets(this->id);
 
 	if(asientos_suficientes){
+		/*El cliente se cambia a la cola de palomitas y bebidas*/
 		cola_hilos_palomitas.push(std::move(cola_hilos_tickets.front()));
 		cola_hilos_tickets.pop();
 
@@ -198,6 +200,7 @@ void Cliente::comportamientoCliente(){
 
 		std::cout << BOLDMAGENTA << "[GENERAL]\t Hilo " << this->id << " entra a la sala a ver DEADPOOL" << RESET <<std::endl;
 	}else{
+		/*El cliente se va del cine y sale de la cola de los tickets*/
 		clientes_no_aceptados.push_back(std::move(cola_hilos_tickets.front()));
 		cola_hilos_tickets.pop();
 		std::cout << BOLDMAGENTA << "[GENERAL]\t Hilo " << this->id << " se va del cine" << RESET <<std::endl;
@@ -245,7 +248,7 @@ void Cliente::comprarPalomitas(int const id){
 /*Manejador de la señal de interrupción Ctrl+C*/
 void manejador(int sig){
     signal(sig, manejador);
-    std::cout << BOLDRED << "\n[MANEJADOR]\t Señal Ctrl+C recibida." << RESET << std::endl;
+    std::cout << BOLDRED << "\n[MANEJADOR]\t Señal Ctrl+C recibida. Programa finalizado" << RESET << std::endl;
     kill(getpid(), SIGKILL);
     exit(EXIT_SUCCESS);
 }
@@ -325,7 +328,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	std::this_thread::sleep_for (std::chrono::milliseconds(1000));
-	std::cout << BOLDBLUE << "\n[GENERAL]\t Todos los asientos están acupados y la película va a empezar "<< RESET <<std::endl;
+	std::cout << BOLDBLUE << "\n[GENERAL]\t Todos los asientos están acupados y la película va a comenzar "<< RESET <<std::endl;
 
 	Pagar.join();
 	return 0;
